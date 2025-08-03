@@ -1,5 +1,3 @@
-# tb3_motion
-
 # 🐢 TurtleBot3 Motion Controller
 
 A modular ROS 2-based project for generating and executing smooth trajectories for TurtleBot3 using B-splines and Pure Pursuit control. It supports trajectory visualization in RViz and error analysis with live plots.
@@ -88,8 +86,8 @@ waypoints:
 ## 🧠 Control Logic
 
 Trajectory Generator:
-- Adds a ghost point behind initial pose  
-- Fits B-spline through waypoints  
+- Adds a ghost point behind initial pose to guide the initial curvature of the robot about its heading
+- Fits B-spline through waypoints 
 - Applies trapezoidal velocity profile
 
 Controller (Pure Pursuit PID):
@@ -102,11 +100,85 @@ Plotter Node:
 
 ---
 
-## 🧩 Known Limitations
+## 🧠 Design Choices, Algorithms & Architecture
 
-- No obstacle avoidance  
-- Works in odom (2D) frame  
-- Tested in simulation only  
+### Architecture Overview
+
+The system is composed of three modular ROS 2 nodes:
+- Trajectory Generator
+- Pure Pursuit Controller
+- Plotter Node
+
+Each component is isolated promoting modularity and ease of debugging.
+
+### Algorithms & Design Decisions
+
+| Component            | Design Choice                           | Reason |
+|---------------------|------------------------------------------|--------|
+| Trajectory          | B-spline with ghost point and waypoints  | Smooth, continuous path generation |
+| Timing              | Trapezoidal velocity profile             | Controlled, realistic speed profile |
+| Controller          | Pure Pursuit with proportional control   | Simple, reliable for mobile robots |
+| Communication       | ROS 2 pub/sub                            | Scalable, standard in robotics |
+| Visualization       | RViz + matplotlib                        | Spatial and error-time domain views |
+| Configuration       | YAML + CLI args                          | Human-readable and flexible |
+
+### Control Logic
+
+- Pure Pursuit:
+  - rho = distance to lookahead point
+  - alpha = heading error
+  - v = K_RHO * rho
+  - w = K_ALPHA * alpha
+
+- Trajectory Generator:
+  - Adds ghost point behind robot
+  - B-spline interpolation
+  - Trapezoidal timing
+
+- Plotter:
+  - Subscribes to odometry and error topics
+  - Publishes actual and planned paths
+  - Live matplotlib updates
+
+---
+
+## 🤖 Extending to a Real Robot
+
+### Replace Simulation Components
+
+| Simulated Element | Real Robot Equivalent |
+|-------------------|------------------------|
+| Gazebo            | Physical world         |
+| /odom from Gazebo | /odom from encoders/IMU |
+| /cmd_vel to sim   | /cmd_vel to base controller |
+| spawn_entity.py   | Turn on robot manually |
+
+### Launch on Real Robot
+
+1. Bring up the robot:
+
+export TURTLEBOT3_MODEL=burger  
+ros2 launch turtlebot3_bringup robot.launch.py
+
+2. Run control nodes:
+
+ros2 run tb3_controller trajectory_generator x y yaw waypoint.yaml  
+ros2 run tb3_controller pure_pursuit_node  
+ros2 run tb3_controller plotter_node
+
+### Additional Considerations
+
+- Tune gains for real-world behavior
+- Keep speeds low for stability
+- Validate topics (/odom, /cmd_vel) and remap as needed
+- Use rqt_plot/RViz remotely
+
+### Future Extensions
+
+- Add obstacle avoidance using /scan
+- Use AMCL or SLAM for localization
+- Upgrade controller (e.g., MPC)
+- Build interactive waypoint UI
 
 ---
 
